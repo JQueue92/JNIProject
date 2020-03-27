@@ -12,6 +12,7 @@ extern "C"
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
+#include <libswresample/swresample.h>
 #ifdef __cplusplus
 };
 #endif
@@ -134,8 +135,89 @@ void play(JNIEnv *env, jobject mInstance, jstring path, jobject surface) {
     env->ReleaseStringUTFChars(path, url);
 }
 
+void playAudio(JNIEnv *env, jobject mInstance, jstring path) {
+    av_register_all();
+    AVFormatContext *avFormatContext = avformat_alloc_context();
+    const char *url = env->GetStringUTFChars(path, JNI_FALSE);
+    if (avformat_open_input(&avFormatContext, url, NULL, NULL) < 0) {//打开文件失败
+        LOGE("打开文件失败");
+        return;
+    }
+
+    if (avformat_find_stream_info(avFormatContext, NULL) < 0) {
+        LOGE("查找媒体文件信息失败");
+        return;
+    }
+
+    int audio_index = -1;
+    for (int i = 0; i < avFormatContext->nb_streams; ++i) {
+        if (avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+            audio_index = i;//找到音频流
+        }
+    }
+
+    //解码
+    AVCodecContext *avCodecContext = avFormatContext->streams[audio_index]->codec;
+    AVCodec *avCodec = avcodec_find_decoder(avCodecContext->codec_id);
+    if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {//打开解码器
+        LOGE("打开解码器失败");
+        return;
+    }
+
+    AVPacket *avPacket = (AVPacket *) av_malloc(sizeof(AVPacket));//解码前数据
+    AVFrame *frame = av_frame_alloc();//解码后数据
+    SwrContext *swrContext = swr_alloc();
+
+    uint8_t *out_buffer = (uint8_t *) av_malloc(44100 * 2);
+
+    uint64_t out_ch_layout = AV_CH_LAYOUT_STEREO;
+
+    AVSampleFormat out_format = AV_SAMPLE_FMT_S16;
+
+    int out_sample_rate = avCodecContext->sample_rate;
+
+    swr_alloc_set_opts(swrContext, out_ch_layout, out_format, out_sample_rate,
+                       avCodecContext->channel_layout, avCodecContext->sample_fmt,
+                       avCodecContext->sample_rate, 0, NULL);
+
+    swr_init(swrContext);
+
+    int out_channel_nb = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+
+    jclass videoPlayer = env->GetObjectClass(mInstance);
+
+    jmethodID createTrack = env->GetMethodID(videoPlayer, "createTrack", "(II)V");
+
+    env->CallVoidMethod(mInstance, createTrack, 44100, out_channel_nb);
+
+    jmethodID playTrack = env->GetMethodID(videoPlayer, "playTrack", "([BI)V");
+    LOGE("AudioTrack初始化完成解码");
+    int got_frame;
+    while (av_read_frame(avFormatContext, avPacket) >= 0) {
+        if (avPacket->stream_index == audio_index) {
+            avcodec_decode_audio4(avCodecContext, frame, &got_frame, avPacket);
+            if (got_frame) {
+                swr_convert(swrContext, &out_buffer, 44100 * 2, (const uint8_t **) frame->data,
+                            frame->nb_samples);
+                int size = av_samples_get_buffer_size(NULL, out_channel_nb, frame->nb_samples,
+                                                      AV_SAMPLE_FMT_S16, 1);
+                jbyteArray audio_sample_array = env->NewByteArray(size);
+                env->SetByteArrayRegion(audio_sample_array, 0, size, (const jbyte *) out_buffer);
+                env->CallVoidMethod(mInstance, playTrack, audio_sample_array, size);
+                env->DeleteLocalRef(audio_sample_array);
+            }
+        }
+    }
+    av_frame_free(&frame);
+    swr_free(&swrContext);
+    avcodec_close(avCodecContext);
+    avformat_close_input(&avFormatContext);
+    env->ReleaseStringUTFChars(path, url);
+}
+
 JNINativeMethod methods[] = {
-        {"play", "(Ljava/lang/String;Landroid/view/Surface;)V", (void *) play}
+        {"play",      "(Ljava/lang/String;Landroid/view/Surface;)V", (void *) play},
+        {"playAudio", "(Ljava/lang/String;)V",                       (void *) playAudio}
 };
 
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {

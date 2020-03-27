@@ -25,22 +25,23 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    fun play(){
+    fun play() {
         thread(true) {
             val file =
                 File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "test.mp4")
-            if(!file.exists()){
+            if (!file.exists()) {
                 val fos = FileOutputStream(file)
                 val inputStream = assets.open("test.mp4")
                 val byteArray = ByteArray(1024)
-                while (inputStream.read(byteArray) > 0){
-                    fos.write(byteArray,0,byteArray.size)
+                while (inputStream.read(byteArray) > 0) {
+                    fos.write(byteArray, 0, byteArray.size)
                 }
                 fos.close()
                 inputStream.close()
             }
             Log.d("MainActivity", "${file.exists()}\tpath=${file.absolutePath}")
             VideoPlayer().play(file.absolutePath, videoView.holder.surface)
+            //VideoPlayer().playAudio(file.absolutePath)
         }
     }
 
