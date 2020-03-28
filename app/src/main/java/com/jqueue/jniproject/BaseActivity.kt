@@ -1,8 +1,10 @@
 package com.jqueue.jniproject
 
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.ArrayMap
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -11,12 +13,11 @@ import androidx.core.content.ContextCompat
 open class BaseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-//        window.addFlags(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
-//        val originFlag = window.decorView.systemUiVisibility
-//        window.decorView.systemUiVisibility = originFlag or View
-//                .SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-//        window.decorView.setPadding(0, 0, 0, if (StatusBarUtil.checkDeviceHasNavigationBar(this)) StatusBarUtil.getNavigationBarHeight(this) else 0)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        window.addFlags(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
+        val originFlag = window.decorView.systemUiVisibility
+        window.decorView.systemUiVisibility = originFlag or View
+                .SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
     }
 
     val runMap = ArrayMap<Int, () -> Unit>()

@@ -37,6 +37,7 @@ void play(JNIEnv *env, jobject mInstance, jstring path, jobject surface) {
         LOGE("获取文件内容失败");
         return;
     }
+    int duration = (avFormatContext->duration)/1000000;//秒数
     //获取到视频内容后找到视频流
     int video_index = -1;
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {

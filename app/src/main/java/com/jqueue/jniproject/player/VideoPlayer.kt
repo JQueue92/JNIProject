@@ -8,6 +8,7 @@ import android.os.Build
 import android.view.Surface
 
 class VideoPlayer {
+
     companion object {
         init {
             System.loadLibrary("avcodec-56")
@@ -69,4 +70,5 @@ class VideoPlayer {
 
     external fun play(path: String, surface: Surface)
     external fun playAudio(path: String)
+    external fun getDuration(): Long
 }
